@@ -52,15 +52,28 @@ const App: React.FC = () => {
       stompClient.subscribe(
         "/sub/room/default-room",
         (message) => {
-          const body = message.body;
+          const body = JSON.parse(message.body);
           console.log("메시지 수신: ", body);
-          setMessages((prevMessages) => [...prevMessages, body]); // 새로운 메시지를 추가
+          setMessages((prevMessages) => [...prevMessages, body.message]); // 새로운 메시지를 추가
         },
         {
           Authorization: `Bearer ${token}`, // 구독 시에도 Authorization 헤더 추가
         }
       );
       console.log("구독 성공");
+
+      stompClient.publish({
+        destination: "/pub/chat/lobby-message",
+        body: JSON.stringify({
+          roomId: "lobby",
+          type: "ENTER",
+          sender: "khg", // 실제 유저 ID 또는 닉네임으로 교체
+          message: "유저가 로비에 입장했습니다.", // 입장 메시지
+        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
     } else {
       console.error("STOMP 클라이언트가 없습니다. 먼저 연결해주세요.");
     }
@@ -69,8 +82,12 @@ const App: React.FC = () => {
   const handleSendMessage = () => {
     if (stompClient && chatMessage.trim()) {
       stompClient.publish({
-        destination: "/pub/chat/message", // 메시지 발송 경로 (Spring 서버 설정에 맞게 수정)
-        body: chatMessage,
+        destination: "/pub/chat/lobby-message", // 메시지 발송 경로 (Spring 서버 설정에 맞게 수정)
+        body: JSON.stringify({
+          roomId: "lobby",
+          sender: "khg",
+          message: chatMessage,
+        }),
         headers: {
           Authorization: `Bearer ${token}`, // 메시지 전송 시에도 Authorization 헤더 추가
         },
